@@ -15,11 +15,16 @@ const userSchema = new mongoose.Schema({
         match: [/\S+@\S+\.\S+/, 'Email format is incorrect!'],
         unique: true,
         trim: true,
+        lowercase: true
     },
     password: {
         type: String,
         required: true,
         minLength: 8
+    },
+    token: {
+        type: String,
+        default: null
     }
 });
 
