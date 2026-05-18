@@ -1,7 +1,8 @@
 import app from './src/app.js';
 import connectDB from './src/database/mongodb.js';
+import { PORT, NODE_ENV } from './src/config/env.js';
 
-app.listen(3000, () => {
-    console.log('Server is running on port 3000');
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
     connectDB();
 });
