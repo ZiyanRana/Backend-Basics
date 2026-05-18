@@ -7,6 +7,7 @@ const postSchema = new mongoose.Schema({
     },
     caption: {
         type: String,
+        required: false,
         default: "No Caption"
     }
 });
