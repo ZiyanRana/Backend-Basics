@@ -117,6 +117,25 @@ export const updatePost = async (req, res, next) => {
             throw error;
         }
 
+        if (req.file) {
+            const result = await uploadFile(req.file.buffer);
+            post.image = result.url;
+        }
+
+        if (req.body.caption) {
+            post.caption = req.body.caption;
+        }
+
+        await post.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({
+            message: "Post updated successfully!",
+            post
+        });
+
     }
     catch(error) {
         await session.abortTransaction();
