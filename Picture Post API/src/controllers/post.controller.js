@@ -1,7 +1,11 @@
+import mongoose from "mongoose";
 import postModel from "../src/models/post.model.js";
 import { uploadFile } from "../src/services/imageStorage.service.js";
 
 export const createPost = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const result = await uploadFile(req.file.buffer);
         const posts = postModel.create([{
@@ -9,12 +13,16 @@ export const createPost = async (req, res, next) => {
             caption: req.body.caption
         }]);
 
+        await session.commitTransaction();
+        session.endSession();
+
         res.status(201).json({
             message: "Post created successfully!",
             post: posts[0]
         })
     }
     catch(error) {
+        
         next(error);
     }
 }

@@ -26,13 +26,12 @@ export const signUp = async (req, res, next) => {
         await session.commitTransaction();
         session.endSession();
 
+        res.cookie('token', token);
+
         res.status(201).json({
             success: true,
             message: "User created successfully!",
-            data: {
-                user: newUsers[0],
-                token
-            }
+            user: newUsers[0]
         });
     }
     catch (error) {
@@ -63,13 +62,12 @@ export const signIn = async (req, res, next) => {
 
         const token = jwt.sign({ userId: existingUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+        res.cookie('token', token);
+
         res.status(200).json({
             success: true,
             message: "User signed in successfully!",
-            data: {
-                user: existingUser,
-                token
-            }
+            user: existingUser
         });
     }
     catch (error) {
@@ -81,11 +79,7 @@ export const signOut = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        let token;
-
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-        }
+        const token = req.cookies.token || req.headers.authorization.split(' ')[1];
 
         if (!token) {
             const error = new Error('Authorization failed, cannot sign out!');
@@ -103,7 +97,7 @@ export const signOut = async (req, res, next) => {
             throw error;
         }
 
-        user.token = null;
+        res.cookies.token = null;
 
         await user.save({ session });
 
