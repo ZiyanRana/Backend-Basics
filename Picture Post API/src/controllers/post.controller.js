@@ -48,6 +48,81 @@ export const createPost = async (req, res, next) => {
 export const deletePost = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
+
+    try {
+        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            const error = new Error('Authorization failed, cannot delete post!');
+            error.statusCode = 401;
+            throw error;
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        const user = await userModel.findById(decoded.userId).session(session);
+        if (!user) {
+            const error = new Error('User associated with this token does not exist!');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const post = await postModel.findById(req.params.id).session(session);
+        if (!post) {
+            const error = new Error('Post with the given id does not exist!');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        await post.deleteOne({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({
+            message: "Post deleted successfully!"
+        });
+    }
+    catch(error) {
+        await session.abortTransaction();
+        session.endSession();
+        next(error);
+    }
+}
+
+export const updatePost = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            const error = new Error('Authorization failed, cannot update post!');
+            error.statusCode = 401;
+            throw error;
+        }
+        
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        const user = await userModel.findById(decoded.userId).session(session);
+        if (!user) {
+            const error = new Error('User associated with this token does not exist!');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const post = await postModel.findById(req.params.id).session(session);
+        if (!post) {
+            const error = new Error('Post with the given id does not exist!');
+            error.statusCode = 404;
+            throw error;
+        }
+
+    }
+    catch(error) {
+        await session.abortTransaction();
+        session.endSession();
+        next(error);
+    }
 }
 
 export const viewPosts = async (req, res, next) => {
