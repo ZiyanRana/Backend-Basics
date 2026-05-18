@@ -7,6 +7,23 @@ export const createPost = async (req, res, next) => {
     session.startTransaction();
 
     try {
+        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            const error = new Error('Authorization failed, cannot create post!');
+            error.statusCode = 401;
+            throw error;
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        const user = await userModel.findById(decoded.userId).session(session);
+
+        if (!user) {
+            const error = new Error('User associated with this token does not exist!');
+            error.statusCode = 404;
+            throw error;
+        }
+
         const result = await uploadFile(req.file.buffer);
         const posts = postModel.create([{
             image: result.url,
@@ -22,9 +39,15 @@ export const createPost = async (req, res, next) => {
         })
     }
     catch(error) {
-        
+        await session.abortTransaction();
+        session.endSession();
         next(error);
     }
+}
+
+export const deletePost = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 }
 
 export const viewPosts = async (req, res, next) => {
