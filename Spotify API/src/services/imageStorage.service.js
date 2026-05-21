@@ -1,4 +1,5 @@
 import ImageKit from '@imagekit/nodejs';
+import { PRIVATE_KEY } from '../config/env.js';
 
 const imagekit = new ImageKit({
     privateKey: PRIVATE_KEY
