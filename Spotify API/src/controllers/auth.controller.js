@@ -88,3 +88,21 @@ export const signIn = async (req, res) => {
     }
 }
 
+export const signOut = (req, res) => {
+    try {
+        if(!req.cookies.token) {
+            return res.status(400).json({ message: 'No user is currently signed in!' });
+        }
+
+        res.clearCookie('token');
+
+        res.status(200).json({ 
+            success: true,
+            message: 'User signed out successfully' 
+        });
+    }
+    catch (err) {
+        console.error('Error in signing the user out, Try again:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
