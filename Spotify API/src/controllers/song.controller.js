@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 import SongsModel from "../models/songs.model.js";
 
 export const createSong = async (req, res) => {
-    const { title, cover, audio } = req.body;
+    const { title } = req.body;
+    const { cover, audio } = req.file;
 
     try {
         const session = await mongoose.startSession();
@@ -13,12 +14,15 @@ export const createSong = async (req, res) => {
             return res.status(400).json({ message: 'A song with this title already exists!' });
         }
 
+        const coverUrl = uploadFile(cover);
+        const audioUrl = uploadFile(audio);
+
         const newSong = await SongsModel.create({
             title,
-            cover,
-            audio,
+            cover: coverUrl,
+            audio: audioUrl,
             artist: req.user._id
-        }.session(session));
+        }, { session: session });
 
         session.commitTransaction();
         session.endSession();
