@@ -5,10 +5,15 @@ import { uploadImage, uploadAudio } from "../services/imageStorage.service.js";
 export const createSong = async (req, res) => {
     const { title } = req.body;
     const { cover, audio } = req.file;
+    const user = req.user;
 
     try {
         const session = await mongoose.startSession();
         session.startTransaction();
+
+        if (user.role !== 'artist') {
+            return res.status(403).json({ message: 'Only artists can create songs!' });
+        }
 
         const existingSong = await SongsModel.findOne({ title: title }).session(session);
         if (existingSong) {
@@ -22,8 +27,8 @@ export const createSong = async (req, res) => {
             title,
             cover: coverUrl,
             audio: audioUrl,
-            artist: req.user._id
-        }, { session: session });
+            artist: user._id
+        }).session(session) ;
 
         session.commitTransaction();
         session.endSession();
@@ -44,7 +49,13 @@ export const createSong = async (req, res) => {
 }
 
 export const getSongs = async (req, res) => {
+    const user = req.user;
     try {
+        if (user.role === 'artist') {
+            const songs = await SongsModel.find({ artist: user._id });
+            return res.status(200).json({ success: true, songs });
+        }
+
         const songs = await SongsModel.find().limit(20).populate('artist', 'username');
         res.status(200).json({ success: true, songs });
     }
@@ -71,3 +82,33 @@ export const getSong = async (req, res) => {
     }
 }
 
+export const updateSong = async (req, res) => {}
+
+export const deleteSong = async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        const song = await SongsModel.findById(id).session(session);
+        if (!song) {
+            return res.status(404).json({ message: 'Song not found!' });
+        }
+        if (song.artist !== req.user._id) {
+            return res.status(403).json({ message: 'You can only delete your own songs!' });
+        }
+        await SongsModel.deleteOne({ _id: id }).session(session);
+
+        session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({ success: true, message: 'Song deleted successfully' });
+    }
+    catch (err) {
+        session.abortTransaction();
+        session.endSession();
+        console.error('Error deleting song:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
