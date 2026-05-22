@@ -1,6 +1,6 @@
 import AlbumModel from "../models/album.model.js";
 import mongoose from "mongoose";
-import { uploadImage } from "../services/imageStorage.service.js";
+import { uploadImage, deleteFile } from "../services/imageStorage.service.js";
 
 export const createAlbum = async (req, res) => {
     const title = req.body.title;
