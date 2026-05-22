@@ -1,6 +1,11 @@
 import AlbumModel from "../models/album.model.js";
 
-export const createAlbum = async (req, res) => {}
+export const createAlbum = async (req, res) => {
+    const title = req.body;
+    const cover = req.file;
+
+    
+}
 
 export const getAlbums = async (req, res) => {
     try {
