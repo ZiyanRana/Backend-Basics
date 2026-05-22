@@ -89,12 +89,16 @@ export const updateSong = async (req, res) => {
     const id = req.params.id;
     const title = req.body.title;
     const cover = req.files.cover[0];
-    if (!cover || !cover.mimetype.startsWith('image/')) {
+    const audio = req.files.audio[0];
+    const user = req.user;
+
+    if (title && title.trim() === '') {
+        return res.status(400).json({ message: 'Song title cannot be empty!' });
+    }
+    if (cover && !cover.mimetype.startsWith('image/')) {
         return res.status(400).json({ message: 'Invalid cover image file!' });
     }
-
-    const audio = req.files.audio[0];
-    if (!audio || !audio.mimetype.startsWith('audio/')) {
+    if (audio && !audio.mimetype.startsWith('audio/')) {
         return res.status(400).json({ message: 'Invalid audio file!' });
     }
 
@@ -102,7 +106,7 @@ export const updateSong = async (req, res) => {
     if (!song) {
         return res.status(404).json({ message: 'Song not found!' });
     }
-    if (song.artist.toString() !== req.user._id.toString()) {
+    if (song.artist.toString() !== user._id.toString()) {
         return res.status(403).json({ message: 'You can only update your own songs!' });
     }
 
@@ -110,14 +114,19 @@ export const updateSong = async (req, res) => {
     session.startTransaction();
 
     try {
-        const coverUrl = await uploadImage(cover);
-        const audioUrl = await uploadAudio(audio);
+        if (title) {
+            song.title = title;
+        }
+        if (cover) {
+            const coverUrl = await uploadImage(cover);
+            song.cover = coverUrl;
+        }
+        if (audio) {
+             const audioUrl = await uploadAudio(audio);
+             song.audio = audioUrl;
+        }
 
-        const updatedSong = await song.updateOne({
-            title,
-            cover: coverUrl,
-            audio: audioUrl
-        }, { session });
+        const updatedSong = await song.save({ session });
         
         session.commitTransaction();
         session.endSession();

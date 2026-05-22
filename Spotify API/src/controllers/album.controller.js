@@ -102,10 +102,11 @@ export const updateAlbum = async (req, res) => {
         if (title) {
             album.title = title;
         }
-        await album.save({ session });
+        
+        const updatedAlbum = await album.save({ session });
         await session.commitTransaction();
         session.endSession();
-        res.status(200).json({ success: true, album });
+        res.status(200).json({ success: true, album: updatedAlbum });
     }
     catch (err) {
         await session.abortTransaction();
@@ -115,4 +116,6 @@ export const updateAlbum = async (req, res) => {
     }
 }
 
-export const deleteAlbum = async (req, res) => {}
+export const deleteAlbum = async (req, res) => {
+    
+}
