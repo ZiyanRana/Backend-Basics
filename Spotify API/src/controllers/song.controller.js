@@ -1,21 +1,29 @@
 import mongoose from "mongoose";
 import SongsModel from "../models/songs.model.js";
-import { uploadImage, uploadAudio } from "../services/imageStorage.service.js";
+import { uploadImage, uploadAudio, deleteFile } from "../services/imageStorage.service.js";
 
 export const createSong = async (req, res) => {
-    const { title } = req.body;
-    const { cover, audio } = req.file;
+    const title = req.body.title;
+    const cover = req.files.cover[0];
+    const audio = req.files.audio[0];
     const user = req.user;
 
+    if (!cover || !cover.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: 'Invalid cover image file!' });
+    }
+    if (!audio || !audio.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: 'Invalid audio file!' });
+    }
+    
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
     try {
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
         if (user.role !== 'artist') {
             return res.status(403).json({ message: 'Only artists can create songs!' });
         }
 
-        const existingSong = await SongsModel.findOne({ title: title }).session(session);
+        const existingSong = await SongsModel.findOne({ title: title }, { session });
         if (existingSong) {
             return res.status(400).json({ message: 'A song with this title already exists!' });
         }
@@ -28,7 +36,7 @@ export const createSong = async (req, res) => {
             cover: coverUrl,
             audio: audioUrl,
             artist: user._id
-        }).session(session) ;
+        }, { session });
 
         session.commitTransaction();
         session.endSession();
@@ -37,7 +45,7 @@ export const createSong = async (req, res) => {
             { 
                 success: true,
                 message: 'Song created successfully',
-                song: newSong 
+                song: newSong[0]
             });
     }
     catch (err) {
@@ -87,10 +95,10 @@ export const updateSong = async (req, res) => {}
 export const deleteSong = async (req, res) => {
     const id = req.params.id;
 
-    try {
-        const session = await mongoose.startSession();
-        session.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
+    try {
         const song = await SongsModel.findById(id).session(session);
         if (!song) {
             return res.status(404).json({ message: 'Song not found!' });
@@ -98,7 +106,9 @@ export const deleteSong = async (req, res) => {
         if (song.artist !== req.user._id) {
             return res.status(403).json({ message: 'You can only delete your own songs!' });
         }
-        await SongsModel.deleteOne({ _id: id }).session(session);
+        await SongsModel.deleteOne({ _id: id }, { session });
+        await deleteFile(song.cover);
+        await deleteFile(song.audio);
 
         session.commitTransaction();
         session.endSession();

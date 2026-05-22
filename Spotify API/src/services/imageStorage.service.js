@@ -1,5 +1,6 @@
 import ImageKit from '@imagekit/nodejs';
 import { PRIVATE_KEY } from '../config/env.js';
+import path from 'path';
 
 const imagekit = new ImageKit({
     privateKey: PRIVATE_KEY
@@ -7,9 +8,10 @@ const imagekit = new ImageKit({
 
 export const uploadImage = async (file) => {
     try {
+        const extension = path.extname(file.originalname);
         const response = await imagekit.files.upload({
-            file: file.buffer,
-            fileName: song_ + Date.now() + '.jpg',
+            file: file.buffer.toString('base64'),
+            fileName: `song_cover_${Date.now()}${extension}`,
             folder: 'spotify-api/song-covers'
         });
         return response.url;
@@ -22,9 +24,10 @@ export const uploadImage = async (file) => {
 
 export const uploadAudio = async (file) => {
     try {
+        const extension = path.extname(file.originalname);
         const response = await imagekit.files.upload({
-            file: file.buffer,
-            fileName: song_ + Date.now() + '.mp3',
+            file: file.buffer.toString('base64'),
+            fileName: `song_audio_${Date.now()}${extension}`,
             folder: 'spotify-api/song-audios'
         });
         return response.url;
@@ -32,5 +35,16 @@ export const uploadAudio = async (file) => {
     catch (err) {
         console.error('Error uploading audio:', err);
         throw new Error('Failed to upload audio');
+    }
+}
+
+export const deleteFile = async (file) => {
+    try {
+        const fileId = path.basename(file, path.extname(file));
+        await imagekit.files.deleteFile(fileId);
+    }
+    catch (err) {
+        console.error('Error deleting file:', err);
+        throw new Error('Failed to delete file');
     }
 }

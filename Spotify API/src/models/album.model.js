@@ -8,6 +8,11 @@ const albumSchema = new mongoose.Schema({
     cover: {
         type: String,
         required: [true, 'Album cover is required!']
+    },
+    artist: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: [true, 'Album artist is required!']
     }
 }, {timestamps: true});
 
