@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
 import bcrypt from 'bcryptjs';
+import UserModel from '../models/user.model.js';
 
 export const authArtist = async(req, res, next) => {
     const token = req.cookies.token;

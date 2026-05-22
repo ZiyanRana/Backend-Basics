@@ -5,34 +5,37 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 export const signUp = async (req, res) => {
+    const { username, email, password, role } = req.body;
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const { username, email, password, role } = req.body;
-
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
-        const existingUsername = await UserModel.findOne({ username: username }.session(session));
+        const existingUsername = await UserModel.findOne({ username: username }, { session });
         if (existingUsername) {
             return res.status(400).json({ message: 'An account with this username already exists, login!' });
         }
 
-        const existingEmail = await UserModel.findOne({ email: email }.session(session));
+        const existingEmail = await UserModel.findOne({ email: email }, { session });
         if (existingEmail) {
             return res.status(400).json({ message: 'An account with this email already exists, login!' });
         }
 
-        const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-        res.cookie('token', token);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = await UserModel.create({
             username,
             email,
-            password,
+            password: hashedPassword,
             role
         });
+        
+        const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-        session.commitTransaction();
+        res.cookie('token', token);
+
+        await session.commitTransaction();
         session.endSession();
 
         res.status(201).json(
@@ -43,7 +46,7 @@ export const signUp = async (req, res) => {
             });
     } 
     catch (err) {
-        session.abortTransaction();
+        await session.abortTransaction();
         session.endSession();
         console.error('Error during user registration:', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -68,9 +71,6 @@ export const signIn = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(400).json({ message: 'Invalid password!' });
         }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
 
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         

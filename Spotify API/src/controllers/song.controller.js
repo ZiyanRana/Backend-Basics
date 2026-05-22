@@ -6,6 +6,7 @@ export const createSong = async (req, res) => {
     const title = req.body.title;
     const cover = req.files.cover[0];
     const audio = req.files.audio[0];
+    const user = req.user;
 
     if (!cover || !cover.mimetype.startsWith('image/')) {
         return res.status(400).json({ message: 'Invalid cover image file!' });
@@ -26,12 +27,12 @@ export const createSong = async (req, res) => {
         const coverUrl = await uploadImage(cover);
         const audioUrl = await uploadAudio(audio);
 
-        const newSong = await SongsModel.create({
+        const newSong = await SongsModel.create([{
             title,
             cover: coverUrl,
             audio: audioUrl,
             artist: user._id
-        }, { session });
+        }], { session });
 
         session.commitTransaction();
         session.endSession();
