@@ -3,24 +3,26 @@ import mongoose from "mongoose";
 import { uploadImage } from "../services/imageStorage.service.js";
 
 export const createAlbum = async (req, res) => {
-    const title = req.body;
-    const cover = req.file;
+    const title = req.body.title;
+    const cover = req.file.cover;
 
-    const coverUrl = await uploadImage(cover);
-
-    if (!title || !cover) {
-        return res.status(400).json({ message: 'ALbum title and cover image are required!' });
+    if (!title || title.trim() === '') {
+        return res.status(400).json({ message: 'Album title is required!' });
+    }
+    if (!cover || !cover.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: 'Invalid cover image file!' });
     }
 
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
+        const coverUrl = await uploadImage(cover);
         const newAlbum = await AlbumModel.createOne({
             title,
             coverUrl,
             artist: req.user._id
-        }).session(session);
+        }, { session });
 
         await session.commitTransaction();
         session.endSession();
@@ -68,6 +70,49 @@ export const getAlbum = async (req, res) => {
     }
 }
 
-export const updateAlbum = async (req, res) => {}
+export const updateAlbum = async (req, res) => {
+    const title = req.body.title;
+    const cover = req.file.cover;
+    const user = req.user;
+    const id = req.params.id;
+
+    if (title && title.trim() === '') {
+        return res.status(400).json({ message: 'Album title cannot be empty!' });
+    }
+    if (cover && !cover.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: 'Invalid cover image file!' });
+    }
+    if (req.user._id.toString() !== album.artist.toString()) {
+        return res.status(403).json({ message: 'You can only update your own albums!' });
+    }
+
+    const album = await AlbumModel.findById(id).session(session);
+    if(!album) {
+        return res.status(404).json({ message: 'Album not found!' });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {   
+        if (cover) {
+            const coverUrl = await uploadImage(cover);
+            album.cover = coverUrl;
+        }
+        if (title) {
+            album.title = title;
+        }
+        await album.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+        res.status(200).json({ success: true, album });
+    }
+    catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Error updating album:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
 
 export const deleteAlbum = async (req, res) => {}
