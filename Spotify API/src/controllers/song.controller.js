@@ -6,7 +6,6 @@ export const createSong = async (req, res) => {
     const title = req.body.title;
     const cover = req.files.cover[0];
     const audio = req.files.audio[0];
-    const user = req.user;
 
     if (!cover || !cover.mimetype.startsWith('image/')) {
         return res.status(400).json({ message: 'Invalid cover image file!' });
@@ -19,10 +18,6 @@ export const createSong = async (req, res) => {
     session.startTransaction();
     
     try {
-        if (user.role !== 'artist') {
-            return res.status(403).json({ message: 'Only artists can create songs!' });
-        }
-
         const existingSong = await SongsModel.findOne({ title: title }, { session });
         if (existingSong) {
             return res.status(400).json({ message: 'A song with this title already exists!' });
@@ -90,7 +85,52 @@ export const getSong = async (req, res) => {
     }
 }
 
-export const updateSong = async (req, res) => {}
+export const updateSong = async (req, res) => {
+    const id = req.params.id;
+    const title = req.body.title;
+    const cover = req.files.cover[0];
+    if (!cover || !cover.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: 'Invalid cover image file!' });
+    }
+
+    const audio = req.files.audio[0];
+    if (!audio || !audio.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: 'Invalid audio file!' });
+    }
+
+    const song = await SongsModel.findById(id);
+    if (!song) {
+        return res.status(404).json({ message: 'Song not found!' });
+    }
+    if (song.artist.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You can only update your own songs!' });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const coverUrl = await uploadImage(cover);
+        const audioUrl = await uploadAudio(audio);
+
+        const updatedSong = await song.updateOne({
+            title,
+            cover: coverUrl,
+            audio: audioUrl
+        }, { session });
+        
+        session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({ success: true, message: 'Song updated successfully', song: updatedSong });
+    }
+    catch (err) {
+        session.abortTransaction();
+        session.endSession();
+        console.error('Error updating song:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
 
 export const deleteSong = async (req, res) => {
     const id = req.params.id;

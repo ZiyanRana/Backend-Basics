@@ -10,5 +10,7 @@ export const {
     DB_URI,
     JWT_SECRET,
     JWT_EXPIRES_IN,
-    PRIVATE_KEY
+    PRIVATE_KEY,
+    PUBLIC_KEY,
+    URL_ENDPOINT
 } = process.env;

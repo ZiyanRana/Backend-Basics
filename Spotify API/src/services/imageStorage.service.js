@@ -1,9 +1,11 @@
 import ImageKit from '@imagekit/nodejs';
-import { PRIVATE_KEY } from '../config/env.js';
+import { PRIVATE_KEY, PUBLIC_KEY, URL_ENDPOINT } from '../config/env.js';
 import path from 'path';
 
 const imagekit = new ImageKit({
-    privateKey: PRIVATE_KEY
+    privateKey: PRIVATE_KEY,
+    publicKey: PUBLIC_KEY,
+    urlEndpoint: URL_ENDPOINT
 });
 
 export const uploadImage = async (file) => {
