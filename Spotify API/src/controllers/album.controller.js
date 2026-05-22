@@ -4,7 +4,7 @@ import { uploadImage, deleteFile } from "../services/imageStorage.service.js";
 
 export const createAlbum = async (req, res) => {
     const title = req.body.title;
-    const cover = req.files.cover[0];
+    const cover = req.file;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ message: 'Album title is required!' });
@@ -72,7 +72,7 @@ export const getAlbum = async (req, res) => {
 
 export const updateAlbum = async (req, res) => {
     const title = req.body.title;
-    const cover = req.files.cover[0];
+    const cover = req.file;
     const user = req.user;
     const id = req.params.id;
 

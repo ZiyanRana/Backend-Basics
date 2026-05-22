@@ -11,3 +11,5 @@ export const songUpload = upload.fields([
     { name: 'cover', maxCount: 1 },
     { name: 'audio', maxCount: 1 }
 ]);
+
+export const albumUpload = upload.single('cover');
