@@ -117,5 +117,11 @@ export const updateAlbum = async (req, res) => {
 }
 
 export const deleteAlbum = async (req, res) => {
-    
+    const id = req.params.id;
+    const user = req.user;
+
+    const album = await AlbumModel.findById(id);
+    if (!album) {
+        return res.status(404).json({ message: 'Album not found!' });
+    }
 }
