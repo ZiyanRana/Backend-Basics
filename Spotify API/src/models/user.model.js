@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema({
         unique: [true, 'Username is already taken!'],
         trim: true,
         minLength: 3,
-        maxLength: 30
+        maxLength: 30,
+        index: true
     },
     email: {
         type: String,
@@ -15,7 +16,8 @@ const userSchema = new mongoose.Schema({
         unique: [true, 'Email is already registered!'],
         trim: true,
         lowercase: true,
-        match: [/.+@.+\..+/, 'Please enter a valid email address']
+        match: [/.+@.+\..+/, 'Please enter a valid email address'],
+        index: true
     },
     password: {
         type: String,

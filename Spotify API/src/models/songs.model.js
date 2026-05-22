@@ -6,7 +6,8 @@ const songsSchema = new mongoose.Schema({
         required: [true, 'Song title is required!'],
         trim: true,
         minLength: 1,
-        maxLength: 100
+        maxLength: 100,
+        index: true
     },
     cover: {
         type: String,

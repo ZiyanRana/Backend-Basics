@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 const albumSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: [true, 'Album title is required!']
+        required: [true, 'Album title is required!'],
+        index: true
     },
     cover: {
         type: String,
