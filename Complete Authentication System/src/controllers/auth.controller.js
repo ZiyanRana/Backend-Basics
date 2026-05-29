@@ -198,9 +198,23 @@ export const refreshToken = async (req, res) => {
     try {
         const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
 
+        const session = await sessionModel.findOne({
+            user: decoded.userId,
+            revoke: false
+        });
+
+        if (!session) {
+            return res.status(401).json({ success: false, message: 'Unauthorized, user login session not found!' });
+        }
+
         const refreshToken = jwt.sign({ userId: decoded.userId }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-        
-        const accessToken = jwt.sign({ userId: decoded.userId }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+        const salt = await bcrypt.genSalt(10);
+        const newRefreshTokenHash = await bcrypt.hash(refreshToken, salt);
+
+        session.refreshToken = newRefreshTokenHash;
+        await session.save();
+
+        const accessToken = jwt.sign({ userId: decoded.userId, sessionId: session._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
 
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
 
