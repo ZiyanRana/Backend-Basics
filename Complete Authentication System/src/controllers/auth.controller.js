@@ -177,6 +177,21 @@ export const signOut = async (req, res) => {
     }
 }
 
+export const signOutAll = async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+        return res.status(401).json({ success: false, message: 'Cannot log out, no user is logged in!' });
+    }
+
+    try {
+        
+    }
+    catch (error) {
+        
+    }
+}
+
 export const getMe = (req, res) => {
     return res.status(200).json({
         success: true,
