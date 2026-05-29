@@ -33,11 +33,14 @@ export const signUp = async (req, res) => {
 
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+        const oneDay = 24 * 60 * 60 * 1000;
+        const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
+
         res.cookie('token', token, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
             sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: JWT_EXPIRES_IN * 24 * 60 * 60 * 1000,
+            maxAge: cookieMaxAge,
             path: '/'
         });
 
@@ -52,7 +55,9 @@ export const signUp = async (req, res) => {
     }
     catch (error) {
         console.error('Unexpected error occured while signing up:', error);
-        return res.status(500).json({ message: 'Internal server error, please try again!' });
+        return res.status(500).json({ 
+            success: false,
+            message: 'Internal server error, please try again!' });
     }
 }
 
@@ -109,7 +114,9 @@ export const signIn = async (req, res) => {
     }
     catch (error) {
         console.error('Unexpected error occured while signing in:', error);
-        return res.status(500).json({ message: 'Internal server error, please try again!' });
+        return res.status(500).json({ 
+            success: false,
+            message: 'Internal server error, please try again!' });
     }
 }
 
@@ -139,6 +146,18 @@ export const signOut = async (req, res) => {
     }
     catch (error) {
         console.error('Unexpected error occured while signing out:', error);
-        return res.status(400).json({ message: 'No user with the provided token is currently signed in!' });
+        return res.status(400).json({ 
+            success: false,
+            message: 'No user with the provided token is currently signed in!' });
     }
+}
+
+export const getMe = (req, res) => {
+    return res.status(200).json({
+        success: true,
+        you: {
+            username: req.user.username,
+            email: req.user.email
+        }
+    });
 }
