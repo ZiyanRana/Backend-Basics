@@ -100,11 +100,20 @@ export const signIn = async (req, res) => {
             return res.status(400).json({ message: 'Password is incorrect, try again!' });
         }
 
-        const accessToken = jwt.sign({ userId: user._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
         const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+        const salt = await bcrypt.genSalt(10);
+        const refreshTokenHash = await bcrypt.hash(refreshToken, salt);
+
+        const session = await sessionModel.create({
+            user: user._id,
+            refreshToken: refreshTokenHash,
+            ip: req.ip,
+            userAgent: req.headers['user-agent']
+        });
+
+        const accessToken = jwt.sign({ userId: user._id, sessionId: session._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
 
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
-
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
@@ -132,7 +141,41 @@ export const signIn = async (req, res) => {
     }
 }
 
-// export const signOut = async (req, res) => {}
+export const signOut = async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+        return res.status(401).json({ success: false, message: 'Cannot log out, no user is logged in!' });
+    }
+
+    try {
+        const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+
+        const session = await sessionModel.findOne({ user: decoded._id, revoke: false });
+        if (!session) {
+            return res.status(401).json({ success: false, message: 'Cannot log out, no user login session found!' });
+        }
+
+        session.revoke = true;
+        await session.save();
+
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: NODE_ENV === 'production',
+            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/'
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'User signed out successfully!'
+        });
+    }
+    catch (error) {
+        console.error('Error signing user out: ', error);
+        return res.status(401).json({ success: false, message: "Unauthorized, couldn't verify token!" });
+    }
+}
 
 export const getMe = (req, res) => {
     return res.status(200).json({
@@ -145,7 +188,7 @@ export const getMe = (req, res) => {
     });
 }
 
-export const refreshToken = (req, res) => {
+export const refreshToken = async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
@@ -155,8 +198,9 @@ export const refreshToken = (req, res) => {
     try {
         const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
 
-        const accessToken = jwt.sign({ userId: decoded.userId }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
         const refreshToken = jwt.sign({ userId: decoded.userId }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+        
+        const accessToken = jwt.sign({ userId: decoded.userId }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
 
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
 
