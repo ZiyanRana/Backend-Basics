@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { signUp, signIn, signOut, getMe } from "../controllers/auth.controller.js";
+import { signUp, signIn, signOut, getMe, refreshToken } from "../controllers/auth.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 
 const authRouter = Router();
@@ -9,5 +9,6 @@ authRouter.post('/register', signUp);
 authRouter.post('/login', signIn);
 authRouter.post('/logout', signOut);
 authRouter.get('/get-me', authMiddleware, getMe);
+authRouter.get('/refresh-token', refreshToken);
 
 export default authRouter;

@@ -1,6 +1,6 @@
 import userModel from "../models/user.model.js";
 import bcrypt from "bcryptjs";
-import { NODE_ENV, JWT_SECRET, JWT_EXPIRES_IN, COOKIE_EXPIRES_IN } from "../config/env.js";
+import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN } from "../config/env.js";
 import jwt from "jsonwebtoken";
 
 export const signUp = async (req, res) => {
@@ -31,12 +31,13 @@ export const signUp = async (req, res) => {
             password: hashedPassword
         });
 
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const accessToken = jwt.sign({ userId: user._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+        const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
         const oneDay = 24 * 60 * 60 * 1000;
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
 
-        res.cookie('token', token, {
+        res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
             sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
@@ -50,7 +51,8 @@ export const signUp = async (req, res) => {
             user: {
                 username: user.username,
                 email: user.email
-            }
+            },
+            token: accessToken
          });
     }
     catch (error) {
@@ -90,12 +92,13 @@ export const signIn = async (req, res) => {
             return res.status(400).json({ message: 'Password is incorrect, try again!' });
         }
 
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const accessToken = jwt.sign({ userId: user._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+        const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
         const oneDay = 24 * 60 * 60 * 1000;
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
 
-        res.cookie('token', token, {
+        res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
             sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
@@ -109,55 +112,30 @@ export const signIn = async (req, res) => {
             user: {
                 username: user.username,
                 email: user.email
-            }
+            },
+            token: accessToken
          });
     }
     catch (error) {
         console.error('Unexpected error occured while signing in:', error);
         return res.status(500).json({ 
             success: false,
-            message: 'Internal server error, please try again!' });
-    }
-}
-
-export const signOut = async (req, res) => {
-    try {
-        const token = req.cookies?.token || req.headers?.authorization?.split(' ')[1];
-
-        if (!token) {
-            return res.status(400).json({ message: 'No user is currently signed in!' });
-        }
-
-        const decoded = jwt.verify(token, JWT_SECRET);
-
-        if (decoded) {
-            res.clearCookie('token', {
-                httpOnly: true,
-                secure: NODE_ENV === 'production',
-                sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-                path: '/'
-            });
-
-            return res.status(200).json({ 
-                success: true,
-                message: 'User signed out successfully!'
-            });
-        }
-    }
-    catch (error) {
-        console.error('Unexpected error occured while signing out:', error);
-        return res.status(400).json({ 
-            success: false,
-            message: 'No user with the provided token is currently signed in!' });
+            message: 'Internal server error, please try again!' 
+        });
     }
 }
 
 export const getMe = (req, res) => {
     return res.status(200).json({
         success: true,
+        message: 'User fetched successfully!',
         you: {
             username: req.user.username,
             email: req.user.email
         }
     });
+}
+
+export const refreshToken = (req, res) => {
+    
 }
