@@ -2,6 +2,7 @@ import userModel from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN, oneDay } from "../config/env.js";
 import jwt from "jsonwebtoken";
+import sessionModel from "../models/sessions.model.js";
 
 export const signUp = async (req, res) => {
     const { username, email, password } = req.body;
@@ -31,11 +32,19 @@ export const signUp = async (req, res) => {
             password: hashedPassword
         });
 
-        const accessToken = jwt.sign({ userId: user._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
         const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+        const refreshTokenHash = await bcrypt.hash(refreshToken, salt);
+
+        const session = await sessionModel.create({
+            user: user._id,
+            refreshToken: refreshTokenHash,
+            ip: req.ip,
+            userAgent: req.headers['user-agent']
+        });
+
+        const accessToken = jwt.sign({ userId: user._id, sessionId: session._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
 
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
-
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
@@ -122,6 +131,8 @@ export const signIn = async (req, res) => {
         });
     }
 }
+
+// export const signOut = async (req, res) => {}
 
 export const getMe = (req, res) => {
     return res.status(200).json({
