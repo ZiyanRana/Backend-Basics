@@ -1,6 +1,6 @@
 import userModel from "../models/user.model.js";
 import bcrypt from "bcryptjs";
-import { NODE_ENV, JWT_SECRET, JWT_EXPIRES_IN } from "../config/env.js";
+import { NODE_ENV, JWT_SECRET, JWT_EXPIRES_IN, COOKIE_EXPIRES_IN } from "../config/env.js";
 import jwt from "jsonwebtoken";
 
 export const signUp = async (req, res) => {
@@ -87,11 +87,14 @@ export const signIn = async (req, res) => {
 
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+        const oneDay = 24 * 60 * 60 * 1000;
+        const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
+
         res.cookie('token', token, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
             sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: JWT_EXPIRES_IN * 24 * 60 * 60 * 1000,
+            maxAge: cookieMaxAge,
             path: '/'
         });
 
@@ -112,26 +115,30 @@ export const signIn = async (req, res) => {
 
 export const signOut = async (req, res) => {
     try {
-        const token = req.cookies.token || req.header.authorization?.split(' ')[1];
+        const token = req.cookies?.token || req.headers?.authorization?.split(' ')[1];
 
         if (!token) {
             return res.status(400).json({ message: 'No user is currently signed in!' });
         }
 
-        res.clearCookie('token', {
-            httpOnly: true,
-            secure: NODE_ENV === 'production',
-            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-            path: '/'
-        });
+        const decoded = jwt.verify(token, JWT_SECRET);
 
-        return res.status(200).json({ 
-            success: true,
-            message: 'User signed out successfully!'
-        });
+        if (decoded) {
+            res.clearCookie('token', {
+                httpOnly: true,
+                secure: NODE_ENV === 'production',
+                sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+                path: '/'
+            });
+
+            return res.status(200).json({ 
+                success: true,
+                message: 'User signed out successfully!'
+            });
+        }
     }
     catch (error) {
         console.error('Unexpected error occured while signing out:', error);
-        return res.status(500).json({ message: 'Internal server error, please try again!' });
+        return res.status(400).json({ message: 'No user with the provided token is currently signed in!' });
     }
 }

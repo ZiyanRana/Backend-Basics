@@ -10,5 +10,6 @@ export const {
     PORT,
     MONGO_URI,
     JWT_SECRET,
-    JWT_EXPIRES_IN
+    JWT_EXPIRES_IN,
+    COOKIE_EXPIRES_IN
 } = process.env;
