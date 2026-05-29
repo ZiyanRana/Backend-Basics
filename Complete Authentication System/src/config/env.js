@@ -13,5 +13,6 @@ export const {
     ACCESS_TOKEN_EXPIRES_IN,
     REFRESH_TOKEN_SECRET,
     REFRESH_TOKEN_EXPIRES_IN,
-    COOKIE_EXPIRES_IN
+    COOKIE_EXPIRES_IN,
+    oneDay
 } = process.env;

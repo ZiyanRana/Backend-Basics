@@ -1,6 +1,6 @@
 import userModel from "../models/user.model.js";
 import bcrypt from "bcryptjs";
-import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN } from "../config/env.js";
+import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN, oneDay } from "../config/env.js";
 import jwt from "jsonwebtoken";
 
 export const signUp = async (req, res) => {
@@ -34,7 +34,6 @@ export const signUp = async (req, res) => {
         const accessToken = jwt.sign({ userId: user._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
         const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
-        const oneDay = 24 * 60 * 60 * 1000;
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
 
         res.cookie('refreshToken', refreshToken, {
@@ -95,7 +94,6 @@ export const signIn = async (req, res) => {
         const accessToken = jwt.sign({ userId: user._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
         const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
-        const oneDay = 24 * 60 * 60 * 1000;
         const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
 
         res.cookie('refreshToken', refreshToken, {
@@ -137,5 +135,38 @@ export const getMe = (req, res) => {
 }
 
 export const refreshToken = (req, res) => {
-    
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+        return res.status(401).json({ success: false, message: 'Unauthorized, no token provided!' });
+    }
+
+    try {
+        const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+
+        const accessToken = jwt.sign({ userId: decoded.userId }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+        const refreshToken = jwt.sign({ userId: decoded.userId }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+
+        const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: NODE_ENV === 'production',
+            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: cookieMaxAge,
+            path: '/'
+        });
+
+        return res.status(200).json({ 
+            success: true,
+            message: 'Token refreshed successfully!',
+            token: accessToken
+        });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(401).json({ 
+            success: false,
+            message: 'Unauthorized, invalid token provided!' });
+    }
 }
