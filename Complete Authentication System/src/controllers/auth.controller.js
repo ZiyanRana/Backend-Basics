@@ -149,9 +149,12 @@ export const signOut = async (req, res) => {
     }
 
     try {
+        // eslint-disable-next-line no-unused-vars
         const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
 
-        const session = await sessionModel.findOne({ user: decoded._id, revoke: false });
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+        const session = await sessionModel.findOne({ refreshToken: refreshTokenHash, revoke: false });
         if (!session) {
             return res.status(401).json({ success: false, message: 'Cannot log out, no user login session found!' });
         }
@@ -185,10 +188,30 @@ export const signOutAll = async (req, res) => {
     }
 
     try {
-        
+        const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+
+        await sessionModel.updateMany({
+            user: decoded._id,
+            revoke: false
+        }, {
+            revoke: true
+        }); 
+
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: NODE_ENV === 'production',
+            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/'
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'User signed out from all devices successfully!'
+        });
     }
     catch (error) {
-        
+        console.error('Error signing user out from all devices: ', error);
+        return res.status(401).json({ success: false, message: "Unauthorized, couldn't verify token!" });
     }
 }
 
@@ -213,8 +236,10 @@ export const refreshToken = async (req, res) => {
     try {
         const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
 
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
         const session = await sessionModel.findOne({
-            user: decoded.userId,
+            refreshToken: refreshTokenHash,
             revoke: false
         });
 
