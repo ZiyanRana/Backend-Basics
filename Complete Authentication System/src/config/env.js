@@ -14,5 +14,9 @@ export const {
     REFRESH_TOKEN_SECRET,
     REFRESH_TOKEN_EXPIRES_IN,
     COOKIE_EXPIRES_IN,
-    oneDay
+    oneDay,
+    EMAIL_USER,
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REFRESH_TOKEN
 } = process.env;
