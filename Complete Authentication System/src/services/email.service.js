@@ -22,7 +22,7 @@ transporter.verify((error) => {
   }
 });
 
-export const sendEmail = async (to, subject, text, html) => {
+const sendEmail = async (to, subject, text, html) => {
   try {
     const info = await transporter.sendMail({
       from: `"Authentication System" <${EMAIL_USER}>`, 
@@ -38,3 +38,5 @@ export const sendEmail = async (to, subject, text, html) => {
     console.error('Error sending email:', error);
   }
 };
+
+export default sendEmail;

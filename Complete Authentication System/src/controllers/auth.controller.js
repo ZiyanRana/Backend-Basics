@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN, oneDay } from "../config/env.js";
 import jwt from "jsonwebtoken";
 import sessionModel from "../models/sessions.model.js";
+import otpModel from "../models/otp.model.js";
+import { generateOtpCode, generateOtpHtml } from "../utils/otp.utils.js";
+import sendEmail from "../services/email.service.js";
 
 export const signUp = async (req, res) => {
     const { username, email, password } = req.body;
@@ -32,35 +35,14 @@ export const signUp = async (req, res) => {
             password: hashedPassword
         });
 
-        const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-        const refreshTokenHash = await bcrypt.hash(refreshToken, salt);
-
-        const session = await sessionModel.create({
-            user: user._id,
-            refreshToken: refreshTokenHash,
-            ip: req.ip,
-            userAgent: req.headers['user-agent']
-        });
-
-        const accessToken = jwt.sign({ userId: user._id, sessionId: session._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
-
-        const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: NODE_ENV === 'production',
-            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: cookieMaxAge,
-            path: '/'
-        });
-
         return res.status(201).json({ 
             success: true,
-            message: 'User created successfully!',
+            message: 'User created successfully, verify your email (use get otp api to get your otp code)to use our features! ',
             user: {
                 username: user.username,
-                email: user.email
-            },
-            token: accessToken
+                email: user.email,
+                verified: user.verified
+            }
          });
     }
     catch (error) {
@@ -92,6 +74,9 @@ export const signIn = async (req, res) => {
 
         if (!user) {
             return res.status(400).json({ message: 'Cannot sign in, user not found!' });
+        }
+        if (!user.verified) {
+            return res.status(400).json({ message: 'User not verified! You cannot sign in, please verify your email first!' })
         }
 
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
@@ -277,5 +262,91 @@ export const refreshToken = async (req, res) => {
         return res.status(401).json({ 
             success: false,
             message: 'Unauthorized, invalid token provided!' });
+    }
+}
+
+export const getOtp = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Email is required to send otp!' });
+    }
+
+    try {
+        const user = await userModel.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Cannot send otp, user not found! Create an account first.' });
+        }
+
+        const otp = generateOtpCode();
+        const otpHash = await bcrypt.hash(otp, 10);
+
+        await otpModel.create({
+            user: user._id,
+            email,
+            otp: otpHash
+        });
+
+        const otpSubject = 'Authentication System - OTP Verification Code';
+        const otpText = `Your verification code is: ${otp}. Use this code to verify your account. If you did not request this code, you can safely ignore this email.`;
+        const otpHtml = generateOtpHtml(otp);
+
+        await sendEmail(email, otpSubject, otpText, otpHtml);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Otp sent successfully, check your mail!'
+        });
+    }
+    catch (error) {
+        console.error('Error sending otp: ', error);
+        return res.status(500).json({ success: false, message: 'A unexpected error occured, please try again later!' });
+    }
+}
+
+export const verifyOtp = async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Cannot proceed, user email not found!' });
+    }
+    if (!otp) {
+        return res.status(400).json({ success: false, message: 'Cannot proceed, otp not found!' });
+    }
+
+    try {
+        const userOtpHash = await bcrypt.hash(otp, 10); 
+        const otpValue = await otpModel.find({
+            email,
+            otp: userOtpHash
+        });
+
+        if (!otpValue) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot verify user, incorrect otp entered!'
+            });
+        }
+
+        await userModel.findOneAndUpdate({
+            email,
+            verified: false
+        }, {
+            verified: true
+        });
+
+        otpModel.deleteMany({
+            email
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'User verified successfully! You can now login and use the application!'
+        });
+    }
+    catch (error) {
+        console.error('Error verifying user: ', error);
+        return res.status(400).json({ success: false, message: 'Cannot verify user, please try again!' });
     }
 }

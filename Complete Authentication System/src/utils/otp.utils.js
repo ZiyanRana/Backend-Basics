@@ -9,7 +9,7 @@ export const generateOtpHtml = (otp) => {
     <body style="margin:0; background:#f5f5f5; font-family:Arial, sans-serif;">
         <div style="max-width:500px; margin:40px auto; padding:32px; background:#ffffff; border-radius:12px;">
             <h2 style="margin-top:0; color:#222;">
-                Authentication System - <i>One Time Pass for Email Verification</i>
+                Authentication System - Email Verification Code
             </h2>
 
             <p style="color:#555; line-height:1.6;">
