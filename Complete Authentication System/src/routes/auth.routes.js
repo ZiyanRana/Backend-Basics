@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { signUp, signIn, signOut, signOutAll, getMe, refreshToken } from "../controllers/auth.controller.js";
+import { signUp, signIn, signOut, signOutAll, getMe, refreshToken, getOtp, verifyOtp } from "../controllers/auth.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 
 const authRouter = Router();
@@ -11,5 +11,7 @@ authRouter.post('/logout', signOut);
 authRouter.post('/logout-all', signOutAll);
 authRouter.get('/get-me', authMiddleware, getMe);
 authRouter.get('/refresh-token', refreshToken);
+authRouter.get('/get-otp', getOtp);
+authRouter.post('/verify-user', verifyOtp);
 
 export default authRouter;

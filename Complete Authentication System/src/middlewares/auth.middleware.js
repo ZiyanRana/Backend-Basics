@@ -2,6 +2,7 @@ import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { REFRESH_TOKEN_SECRET } from "../config/env.js";
 
+
 const authMiddleware = async (req, res, next) => {
     const refreshToken = req.cookies.refreshToken;
 

@@ -1,8 +1,9 @@
 import userModel from "../models/user.model.js";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN, oneDay } from "../config/env.js";
+import { NODE_ENV, ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_SECRET, REFRESH_TOKEN_EXPIRES_IN, COOKIE_EXPIRES_IN } from "../config/env.js";
 import jwt from "jsonwebtoken";
-import sessionModel from "../models/sessions.model.js";
+import sessionModel from "../models/session.model.js";
 import otpModel from "../models/otp.model.js";
 import { generateOtpCode, generateOtpHtml } from "../utils/otp.utils.js";
 import sendEmail from "../services/email.service.js";
@@ -86,8 +87,7 @@ export const signIn = async (req, res) => {
         }
 
         const refreshToken = jwt.sign({ userId: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-        const salt = await bcrypt.genSalt(10);
-        const refreshTokenHash = await bcrypt.hash(refreshToken, salt);
+        const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
         const session = await sessionModel.create({
             user: user._id,
@@ -97,8 +97,10 @@ export const signIn = async (req, res) => {
         });
 
         const accessToken = jwt.sign({ userId: user._id, sessionId: session._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
-
-        const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
+        const cookieExpiresIn = Number(COOKIE_EXPIRES_IN);
+        const oneDay = 24*60*60*1000;
+        const cookieMaxAge = cookieExpiresIn * oneDay;
+        
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: NODE_ENV === 'production',
@@ -118,7 +120,7 @@ export const signIn = async (req, res) => {
          });
     }
     catch (error) {
-        console.error('Unexpected error occured while signing in:', error);
+        console.error('Error occured while signing in:', error);
         return res.status(500).json({ 
             success: false,
             message: 'Internal server error, please try again!' 
@@ -137,7 +139,7 @@ export const signOut = async (req, res) => {
         // eslint-disable-next-line no-unused-vars
         const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
 
-        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+        const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
         const session = await sessionModel.findOne({ refreshToken: refreshTokenHash, revoke: false });
         if (!session) {
@@ -221,7 +223,7 @@ export const refreshToken = async (req, res) => {
     try {
         const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
 
-        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+        const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
         const session = await sessionModel.findOne({
             refreshToken: refreshTokenHash,
@@ -232,16 +234,17 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized, user login session not found!' });
         }
 
-        const refreshToken = jwt.sign({ userId: decoded.userId }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-        const salt = await bcrypt.genSalt(10);
-        const newRefreshTokenHash = await bcrypt.hash(refreshToken, salt);
+        const newRefreshToken = jwt.sign({ userId: decoded.userId }, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+        const newRefreshTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
 
         session.refreshToken = newRefreshTokenHash;
         await session.save();
 
         const accessToken = jwt.sign({ userId: decoded.userId, sessionId: session._id }, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
 
-        const cookieMaxAge = COOKIE_EXPIRES_IN * oneDay;
+        const cookieExpiresIn = Number(COOKIE_EXPIRES_IN);
+        const oneDay = 24*60*60*1000;
+        const cookieMaxAge = cookieExpiresIn * oneDay;
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
