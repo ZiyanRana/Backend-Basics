@@ -36,9 +36,24 @@ export const signUp = async (req, res) => {
             password: hashedPassword
         });
 
+        const otp = generateOtpCode();
+        const otpHash = await bcrypt.hash(otp, 10);
+
+        await otpModel.create({
+            user: user._id,
+            email,
+            otp: otpHash
+        });
+
+        const otpSubject = 'Authentication System - OTP Verification Code';
+        const otpText = `Your verification code is: ${otp}. Use this code to verify your account. If you did not request this code, you can safely ignore this email.`;
+        const otpHtml = generateOtpHtml(otp);
+
+        await sendEmail(email, otpSubject, otpText, otpHtml);
+
         return res.status(201).json({ 
             success: true,
-            message: 'User created successfully, verify your email (use get otp api to get your otp code)to use our features! ',
+            message: 'User created successfully, verify yourself through the otp sent to your email to use our features! ',
             user: {
                 username: user.username,
                 email: user.email,
@@ -272,14 +287,18 @@ export const getOtp = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-        return res.status(400).json({ success: false, message: 'Email is required to send otp!' });
+        return res.status(400).json({ success: false, message: 'Cannot proceed, user email not found!' });
     }
 
     try {
         const user = await userModel.findOne({ email });
 
         if (!user) {
-            return res.status(400).json({ success: false, message: 'Cannot send otp, user not found! Create an account first.' });
+            return res.status(400).json({ success: false, message: 'Cannot proceed, user not found!' });
+        }
+
+        if (user.verified) {
+            return res.status(400).json({ success: false, message: 'User already verified, no need for otp!' });
         }
 
         const otp = generateOtpCode();
@@ -291,20 +310,15 @@ export const getOtp = async (req, res) => {
             otp: otpHash
         });
 
-        const otpSubject = 'Authentication System - OTP Verification Code';
-        const otpText = `Your verification code is: ${otp}. Use this code to verify your account. If you did not request this code, you can safely ignore this email.`;
-        const otpHtml = generateOtpHtml(otp);
-
-        await sendEmail(email, otpSubject, otpText, otpHtml);
-
         return res.status(200).json({
             success: true,
-            message: 'Otp sent successfully, check your mail!'
+            message: 'OTP sent successfully!',
+            otp
         });
     }
     catch (error) {
         console.error('Error sending otp: ', error);
-        return res.status(500).json({ success: false, message: 'A unexpected error occured, please try again later!' });
+        return res.status(500).json({ success: false, message: 'Internal server error, please try again!' });
     }
 }
 
