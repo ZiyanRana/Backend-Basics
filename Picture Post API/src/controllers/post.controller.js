@@ -1,49 +1,29 @@
-import mongoose from "mongoose";
 import postModel from "../src/models/post.model.js";
 import { uploadFile } from "../src/services/imageStorage.service.js";
-import { JWT_SECRET } from "../config/env.js";
-import userModel from "../models/user.model.js";
-import jwt from 'jsonwebtoken';
 
 export const createPost = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            const error = new Error('Authorization failed, cannot create post!');
-            error.statusCode = 401;
-            throw error;
+        const postImage = req.file.buffer;
+        const caption = req.body.caption;
+
+        if (!postImage) {
+            return res.status(400).json({
+                message: "Image is required to create a post!"
+            });
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET);
-
-        const user = await userModel.findById(decoded.userId).session(session);
-
-        if (!user) {
-            const error = new Error('User associated with this token does not exist!');
-            error.statusCode = 404;
-            throw error;
-        }
-
-        const result = await uploadFile(req.file.buffer);
-        const posts = postModel.create([{
+        const result = await uploadFile(postImage);
+        const post = postModel.create({
             image: result.url,
-            caption: req.body.caption
-        }]);
-
-        await session.commitTransaction();
-        session.endSession();
+            caption,
+        });
 
         res.status(201).json({
             message: "Post created successfully!",
-            post: posts[0]
+            post
         })
     }
     catch(error) {
-        await session.abortTransaction();
-        session.endSession();
         console.error(error);
         return res.status(500).json({
             message: "Failed to create post, please try again!"
@@ -52,45 +32,21 @@ export const createPost = async (req, res) => {
 }
 
 export const deletePost = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            const error = new Error('Authorization failed, cannot delete post!');
-            error.statusCode = 401;
-            throw error;
-        }
-
-        const decoded = jwt.verify(token, JWT_SECRET);
-
-        const user = await userModel.findById(decoded.userId).session(session);
-        if (!user) {
-            const error = new Error('User associated with this token does not exist!');
-            error.statusCode = 404;
-            throw error;
-        }
-
-        const post = await postModel.findById(req.params.id).session(session);
+        const post = await postModel.findById(req.params.id);
         if (!post) {
-            const error = new Error('Post with the given id does not exist!');
-            error.statusCode = 404;
-            throw error;
+            return res.status(404).json({
+                message: "Post with the given id does not exist!"
+            });
         }
 
-        await post.deleteOne({ session });
-
-        await session.commitTransaction();
-        session.endSession();
+        await postModel.findByIdAndDelete(req.params.id);
 
         res.status(200).json({
             message: "Post deleted successfully!"
         });
     }
     catch(error) {
-        await session.abortTransaction();
-        session.endSession();
         console.error(error);
         return res.status(500).json({
             message: "Failed to delete post, please try again!"
@@ -99,31 +55,12 @@ export const deletePost = async (req, res) => {
 }
 
 export const updatePost = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    
     try {
-        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            const error = new Error('Authorization failed, cannot update post!');
-            error.statusCode = 401;
-            throw error;
-        }
-        
-        const decoded = jwt.verify(token, JWT_SECRET);
-
-        const user = await userModel.findById(decoded.userId).session(session);
-        if (!user) {
-            const error = new Error('User associated with this token does not exist!');
-            error.statusCode = 404;
-            throw error;
-        }
-
-        const post = await postModel.findById(req.params.id).session(session);
+        const post = await postModel.findById(req.params.id);
         if (!post) {
-            const error = new Error('Post with the given id does not exist!');
-            error.statusCode = 404;
-            throw error;
+            return res.status(404).json({
+                message: "Post with the given id does not exist!"
+            });
         }
 
         if (req.file) {
@@ -135,20 +72,14 @@ export const updatePost = async (req, res) => {
             post.caption = req.body.caption;
         }
 
-        await post.save({ session });
-
-        await session.commitTransaction();
-        session.endSession();
+        await post.save();
 
         res.status(200).json({
             message: "Post updated successfully!",
             post
         });
-
     }
     catch(error) {
-        await session.abortTransaction();
-        session.endSession();
         console.error(error);
         return res.status(500).json({
             message: "Failed to update post, please try again!"
