@@ -1,19 +1,20 @@
 import { Router } from 'express';
 import { createPost, deletePost, updatePost , viewPosts, viewPost } from '../../controllers/post.controller.js';
 import multer from 'multer';
+import { authMiddleware } from '../../middlewares/auth.middleware.js';
 
 const postRouter = Router();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-postRouter.post('/create', upload.single('image'), createPost);
+postRouter.post('/create', authMiddleware, upload.single('image'), createPost);
 
-postRouter.delete('/delete/:id', deletePost);
+postRouter.delete('/delete/:id', authMiddleware, deletePost);
 
-postRouter.put('/update/:id', upload.single('image'), updatePost);
+postRouter.put('/update/:id', authMiddleware, upload.single('image'), updatePost);
 
-postRouter.get('/view', viewPosts);
+postRouter.get('/view', authMiddleware, viewPosts);
 
-postRouter.get('/view/:id', viewPost);
+postRouter.get('/view/:id', authMiddleware, viewPost);
 
 export default postRouter;
