@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 import postModel from "../src/models/post.model.js";
 import { uploadFile } from "../src/services/imageStorage.service.js";
+import { JWT_SECRET } from "../config/env.js";
+import userModel from "../models/user.model.js";
+import jwt from 'jsonwebtoken';
 
 export const createPost = async (req, res, next) => {
     const session = await mongoose.startSession();
