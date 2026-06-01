@@ -5,7 +5,7 @@ import { JWT_SECRET } from "../config/env.js";
 import userModel from "../models/user.model.js";
 import jwt from 'jsonwebtoken';
 
-export const createPost = async (req, res, next) => {
+export const createPost = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -44,11 +44,14 @@ export const createPost = async (req, res, next) => {
     catch(error) {
         await session.abortTransaction();
         session.endSession();
-        next(error);
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to create post, please try again!"
+        });
     }
 }
 
-export const deletePost = async (req, res, next) => {
+export const deletePost = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -88,11 +91,14 @@ export const deletePost = async (req, res, next) => {
     catch(error) {
         await session.abortTransaction();
         session.endSession();
-        next(error);
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to delete post, please try again!"
+        });
     }
 }
 
-export const updatePost = async (req, res, next) => {
+export const updatePost = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     
@@ -143,11 +149,14 @@ export const updatePost = async (req, res, next) => {
     catch(error) {
         await session.abortTransaction();
         session.endSession();
-        next(error);
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to update post, please try again!"
+        });
     }
 }
 
-export const viewPosts = async (req, res, next) => {
+export const viewPosts = async (req, res) => {
     try {
         const posts = await postModel.find();
         res.status(200).json({
@@ -156,17 +165,20 @@ export const viewPosts = async (req, res, next) => {
         });
     }
     catch (error) {
-        next(error);
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to fetch posts, please try again!"
+        });
     }
 }
 
-export const viewPost = async (req, res, next) => {
+export const viewPost = async (req, res) => {
     try {
         const post = await postModel.findById(req.params.id);
         if (!post) {
-            const error = new Error("Post with the given id does not exist on the DB!");
-            error.statusCode = 404;
-            throw error;
+            return res.status(404).json({
+                message: "Post with the given id does not exist!"
+            })
         }
 
         res.status(200).json({
@@ -175,6 +187,9 @@ export const viewPost = async (req, res, next) => {
         });
     }
     catch (error) {
-        next(error);
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to fetch post, please try again!"
+        });
     }
 }
